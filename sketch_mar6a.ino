@@ -73,8 +73,27 @@ void drawPile(int pile[],uint16_t c){
   }
 }
 
-void fall(int x1,int y1,int x2,int y2,bool e){
-  a=1;
+void fall(int pile[],bool e){
+  int x1=pile[0];
+  int y1=pile[1];
+  int x2=pile[2];
+  int y2=pile[3];
+  for(int i=y1;i<y2;i=i+3){
+    e=game[int(x2/3)][int(i/3)]==null;
+  }
+  if(e){
+    pile[1]++;
+    pile[3]++;
+  }
+  return pile,bool e
+}
+
+void hit(int pile[],String c){
+  int x1=pile[0];
+  int y1=pile[1];
+  int x2=pile[2];
+  int y2=pile[3];
+  game[int(x1/3)][int(int(y1/3))]=c;
 }
 
 void loop()
