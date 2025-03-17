@@ -1,5 +1,6 @@
 int sizem=63;
-
+int bp1=2;
+int bp2=3;
 
 
 #include <DFRobot_RGBMatrix.h> // Hardware-specific library
@@ -23,11 +24,30 @@ uint16_t blue=matrix.Color333(0, 0, 7);
 uint16_t green=matrix.Color333(0, 7, 0);
 uint16_t yellow=matrix.Color333(7, 7, 0);
 uint16_t white=matrix.Color333(7, 7, 7);
-String game [10][20];
+uint16_t black=matrix.Color333(0, 0, 0);
+long int temps=micros();
+uint16_t game [10][20];
+
+int pile1[]={33, 3, 35, 5};
+int pile2[]={36, 3, 38, 5};
+uint16_t c1=red;
+uint16_t c2=blue;
+bool fa=true;
 
 void setup()
 {
+  Serial.begin(9600);
+  pinMode(bp1,INPUT_PULLUP);
+  pinMode(bp2,INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(bp1), stepleft, FALLING);
+  attachInterrupt(digitalPinToInterrupt(bp2), stepright, FALLING);
   matrix.begin();
+  for(int i=0;i<10;i++){
+    for (int j=0;j<20;j++){
+      game[i][j]=black;
+    }
+  }
+  game[0][19]=red;
   // fill the screen with 'black'
   matrix.fillScreen(matrix.Color333(0, 0, 0));
   matrix.drawLine(0, 0, 63, 0, white);
@@ -45,14 +65,12 @@ void setup()
    matrix.setCursor(1, 12);
   matrix.println(score);
   matrix.setTextColor(matrix.Color333(4, 0, 4));//
+  drawVirus();
   delay(500);
   //test
-  int pile[]={34, 25, 39, 26};
-  int sta=33;
-  drawPile(pile,green);;
   //drawPile(50,20,52,21,green);;
   //drawPile(53,20,55,21,red);;
-  uint16_t c=red;
+  /*uint16_t c=red;
   for(int i=3;i<62;i=i+3){
     //drawPile(50,i,52,i+3,c);;
     if (c==green){
@@ -60,7 +78,7 @@ void setup()
     }else{
       c=green;
     }
-  }
+  }*/
 }
 
 void drawPile(int pile[],uint16_t c){
@@ -73,31 +91,120 @@ void drawPile(int pile[],uint16_t c){
   }
 }
 
-void fall(int pile[],bool e){
-  int x1=pile[0];
-  int y1=pile[1];
-  int x2=pile[2];
-  int y2=pile[3];
-  for(int i=y1;i<y2;i=i+3){
-    e=game[int(x2/3)][int(i/3)]==null;
-  }
-  if(e){
-    pile[1]++;
-    pile[3]++;
-  }
-  return pile,bool e
+uint16_t randomColors() {
+  return colors[random(4)],colors[random(4)];
 }
 
-void hit(int pile[],String c){
+uint16_t randomColor() {
+  return colors[random(4)];
+}
+
+void generateViruses(int n) {
+  int i=0;
+  while (i<=n) {
+    int x = random(10);
+    int y = random(10);
+    if (game[x][y]==black) {
+      game[random(10)][random(10)]=randomColor(); //10;10 ???
+      i++;
+    }
+  }
+}
+
+void drawVirus(){
+  for(int i=0;i<10;i++){
+    for (int j=0;j<20;j++){
+      if (game[i][j]!=black){
+        matrix.drawLine(i*3+33, j*3+3, i*3+35, j*3+5, red);
+        matrix.drawLine(i*3+33, j*3+5, i*3+35, j*3+3, red);
+      }
+    }
+  }
+}
+
+void swapile(){
+  int a=1;
+}
+
+void heal(){
+  int a=1;
+}
+
+void cleanBoard(){
+  int a=1;
+}
+
+void stepleft(){
+  int x1=pile1[0];
+  int x2=pile2[0];
+  if(x1>33 || x2>33){
+    if (temps-micros()>10000){
+      pile1[0]=x1-3;
+      pile1[2]=x1-1;
+      pile2[0]=x2-3;
+      pile2[2]=x2-1;
+    }
+  }
+  temps=micros();
+}
+
+void stepright(){
+  int x1=pile1[2];
+  int x2=pile2[2];
+  if(x1<62 || x2<62){
+    if (temps-micros()>10000){
+      pile1[0]=x1+1;
+      pile1[2]=x1+3;
+      pile2[0]=x2+1;
+      pile2[2]=x2+3;
+    }
+  }
+  temps=micros();
+}
+
+int fall(int py){
+  return py+3;
+}
+
+bool hit(int pile[],uint16_t c,bool fa){
   int x1=pile[0];
   int y1=pile[1];
   int x2=pile[2];
   int y2=pile[3];
-  game[int(x1/3)][int(int(y1/3))]=c;
+  if ((int(y2/3))>19 || game[int((x2-33)/3)][int((y2-3)/3)+1]!=black || fa==false){
+    game[int((x2-33)/3)][int((y2-3)/3)]=c;
+    fa=false;
+  }
+  return fa;
 }
 
 void loop()
-{  /*byte i;
+{  
+  //int pile1[]={34, 1, 36, 3};
+  //int pile2[]={37, 1, 39, 3};
+  drawPile(pile1,c1);
+  drawPile(pile2,c2);
+  delay(500);
+  if(fa){
+    drawPile(pile1,black);
+    drawPile(pile2,black);
+    pile1[1]=fall(pile1[1]);
+    pile1[3]=fall(pile1[3]);
+    pile2[1]=fall(pile2[1]);
+    pile2[3]=fall(pile2[3]);
+    fa=hit(pile1,c1,fa);
+    fa=hit(pile2,c2,fa);
+    //Serial.println(int(pile1[1]/3));
+    
+  }else{
+    pile1[1]=3;
+    pile1[3]=5;
+    pile2[1]=3;
+    pile2[3]=5;
+    fa=true;
+    //delay(10000);
+  }
+  /*byte i;
   if(a<=-64)
 {a=64;
   }
