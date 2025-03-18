@@ -25,6 +25,7 @@ uint16_t green=matrix.Color333(0, 7, 0);
 uint16_t yellow=matrix.Color333(7, 7, 0);
 uint16_t white=matrix.Color333(7, 7, 7);
 uint16_t black=matrix.Color333(0, 0, 0);
+//uint16_t colors[]={red,blue,yellow};
 long int temps=micros();
 uint16_t game [10][20];
 
@@ -92,11 +93,11 @@ void drawPile(int pile[],uint16_t c){
 }
 
 uint16_t randomColors() {
-  return colors[random(4)],colors[random(4)];
+  //return colors[random(3)],colors[random(3)];  //<- ça marche !?!?
 }
 
 uint16_t randomColor() {
-  return colors[random(4)];
+//  return colors[random(3)];
 }
 
 void generateViruses(int n) {
@@ -126,39 +127,143 @@ void swapile(){
   int a=1;
 }
 
-void heal(){
-  int a=1;
+int heal(int x,int y,uint16_t c,String dir,int nb){
+  int r=0;
+  int l=0;
+  int d=0;
+  int u=0;
+  Serial.println(x);
+  Serial.println(y);
+  Serial.println(dir);
+  Serial.println(game[x][y+1]==c);
+  Serial.println(game[x][y+1]==black);
+  if ((dir=="n"|| dir=="r") && game[x+1][y]==c){
+    Serial.println("r");
+    Serial.println(nb);
+    int h1=nb;
+    h1=heal(x++,y,c,"r",h1++); //variable prend en compte pour cross
+    if (h1!=0 && dir!="n"){
+      return h1;
+    }else if(h1>3 && dir=="n"){
+      r=h1;
+    }
+  }
+  if ((dir=="n"|| dir=="l") && game[x-1][y]==c){
+    Serial.println("l");
+    Serial.println(nb);
+    int h2=nb;
+    h2=heal(x--,y,c,"l",h2++);
+    if (h2!=0 && dir!="n"){
+      return h2;
+    }else if(h2>3 && dir=="n"){
+      l=h2;
+    }
+  }
+  if ((dir=="n"|| dir=="d") && game[x][y+1]==c){
+    Serial.println("d");
+    Serial.println(nb);
+    int h3=nb;
+    h3=heal(x,y++,c,"d",h3++);
+    if (h3!=0 && dir!="n"){
+      return h3;
+    }else if(h3>3 && dir=="n"){
+      d=h3;
+    }
+  }
+  if ((dir=="n"|| dir=="u") && game[x][y-1]==c){
+    Serial.println("u");
+    Serial.println(nb);
+    int h4=nb;
+    h4=heal(x,y--,c,"u",h4++);
+    if (h4!=0 && dir!="n"){
+      return h4;
+    }else if(h4>3 && dir=="n"){
+      u=h4;
+    }
+  }else{
+    return 0;
+  }
+  //suppression
+  if (r>0){
+    cleanBoard(x,y,"r",r);
+  }
+  if (l>0){
+    cleanBoard(x,y,"l",l);
+  }
+  if (d>0){
+    cleanBoard(x,y,"d",d);
+  }
+  if (u>0){
+    cleanBoard(x,y,"u",u);
+  }
 }
 
-void cleanBoard(){
-  int a=1;
+void cleanBoard(int x,int y,String dir,int nb){
+  Serial.println("test");
+  Serial.println("nb");
+  if(dir=="l"){
+    for(int i=0;i<nb;i++){
+      game[x-i][y]=black;
+      int pileb[]={(x+1-i)*3,y*3,(x+1-i)*3,y*3+2};
+      drawPile(pileb,black);
+    }
+  }
+  if(dir=="r"){
+    for(int i=0;i<nb;i++){
+      game[x+i][y]=black;
+      int pileb[]={(x+1+i),y*3,(x+1+i)*3+2,y*3+2};
+      drawPile(pileb,black);
+    }
+  }
+  if(dir=="u"){
+    for(int i=0;i<nb;i++){
+      game[x][y-i]=black;
+      int pileb[]={x*3+3,(y-i)*3,x*3+5,(y-i)*3+2};
+      drawPile(pileb,black);
+    }
+  }
+  if(dir=="d"){
+    for(int i=0;i<nb;i++){
+      game[x][y+i]=black;
+      int pileb[]={x*3+3,(y+i)*3,x*3+5,(y+i)*3+2};
+      drawPile(pileb,black);
+    }
+  }
 }
 
 void stepleft(){
+  drawPile(pile1,black);
+  drawPile(pile2,black);
   int x1=pile1[0];
   int x2=pile2[0];
-  if(x1>33 || x2>33){
-    if (temps-micros()>10000){
+  if(x1>33 && x2>33){
+    if (micros()-temps>100000){
       pile1[0]=x1-3;
       pile1[2]=x1-1;
       pile2[0]=x2-3;
       pile2[2]=x2-1;
     }
   }
+  drawPile(pile1,c1);
+  drawPile(pile2,c2);
   temps=micros();
 }
 
-void stepright(){
+void stepright(){ //ajouter collision horizontal
+  drawPile(pile1,black);
+  drawPile(pile2,black);
   int x1=pile1[2];
   int x2=pile2[2];
-  if(x1<62 || x2<62){
-    if (temps-micros()>10000){
+  if(x1<62 && x2<62){
+    if (micros()-temps>100000){
       pile1[0]=x1+1;
       pile1[2]=x1+3;
       pile2[0]=x2+1;
       pile2[2]=x2+3;
     }
   }
+  drawPile(pile1,c1);
+  drawPile(pile2,c2);
   temps=micros();
 }
 
@@ -166,7 +271,7 @@ int fall(int py){
   return py+3;
 }
 
-bool hit(int pile[],uint16_t c,bool fa){
+bool hit(int pile[],uint16_t c,bool fa){  //rajouter heal
   int x1=pile[0];
   int y1=pile[1];
   int x2=pile[2];
@@ -197,6 +302,13 @@ void loop()
     //Serial.println(int(pile1[1]/3));
     
   }else{
+    Serial.println(pile1[1]);
+    int x=pile1[0]/3-11;
+    int y=pile1[1]/3-1;
+    heal(x,y,c1,"n",0);
+    x=pile2[0]/3-11;
+    y=pile1[1]/3;
+    heal(x,y,c2,"n",0);
     pile1[1]=3;
     pile1[3]=5;
     pile2[1]=3;
