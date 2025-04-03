@@ -26,7 +26,7 @@ uint16_t yellow=matrix.Color333(7, 7, 0);
 uint16_t white=matrix.Color333(7, 7, 7);
 uint16_t black=matrix.Color333(0, 0, 0);
 //uint16_t colors[]={red,blue,yellow};
-long int temps=micros();
+volatile long int temps1=0;
 uint16_t game [10][20];
 
 int pile1[]={33, 3, 35, 5};
@@ -82,7 +82,7 @@ void setup()
   }*/
 }
 
-void drawPile(int pile[],uint16_t c){
+int drawPile(int pile[],uint16_t c){
   int x1=pile[0];
   int y1=pile[1];
   int x2=pile[2];
@@ -90,6 +90,7 @@ void drawPile(int pile[],uint16_t c){
   for(int y=y1;y<y2+1;y++){
     matrix.drawLine(x1, y, x2, y, c);
   }
+  return 1; //<-sert pour fun heal
 }
 
 uint16_t randomColors() {
@@ -132,75 +133,72 @@ int heal(int x,int y,uint16_t c,String dir,int nb){
   int l=0;
   int d=0;
   int u=0;
-  Serial.println(x);
-  Serial.println(y);
-  Serial.println(dir);
-  Serial.println(game[x][y+1]==c);
-  Serial.println(game[x][y+1]==black);
+  //Serial.println(x);
+  //Serial.println(y);
+  //Serial.println(dir);
+  //Serial.println(game[x][y+1]==c);
+  //Serial.println(game[x][y+1]==black);
   if ((dir=="n"|| dir=="r") && game[x+1][y]==c){
-    Serial.println("r");
-    Serial.println(nb);
+    //Serial.println("r");
+    //Serial.println(nb);
     int h1=nb;
-    h1=heal(x++,y,c,"r",h1++); //variable prend en compte pour cross
-    if (h1!=0 && dir!="n"){
-      return h1;
-    }else if(h1>3 && dir=="n"){
+    h1=heal(x+1,y,c,"r",h1+1); //variable prend en compte pour cross
+    if(h1>3 && nb==1){
       r=h1;
+      cleanBoard(x,y,"r",r);
+    }
+    else if (h1!=0){
+      return h1;
     }
   }
   if ((dir=="n"|| dir=="l") && game[x-1][y]==c){
-    Serial.println("l");
-    Serial.println(nb);
+    //Serial.println("l");
+    //Serial.println(nb);
     int h2=nb;
-    h2=heal(x--,y,c,"l",h2++);
-    if (h2!=0 && dir!="n"){
-      return h2;
-    }else if(h2>3 && dir=="n"){
+    h2=heal(x-1,y,c,"l",h2+1);
+    if(h2>3 && nb==1){
       l=h2;
+      cleanBoard(x,y,"l",l);
+    }
+    else if (h2!=0){
+      return h2;
     }
   }
   if ((dir=="n"|| dir=="d") && game[x][y+1]==c){
-    Serial.println("d");
-    Serial.println(nb);
     int h3=nb;
-    h3=heal(x,y++,c,"d",h3++);
-    if (h3!=0 && dir!="n"){
-      return h3;
-    }else if(h3>3 && dir=="n"){
+    h3=heal(x,y+1,c,"d",h3+1);
+    if(h3>3 && nb==1){
       d=h3;
+      cleanBoard(x,y,"d",d);
+    }
+    else if (h3!=0){
+      return h3;
     }
   }
   if ((dir=="n"|| dir=="u") && game[x][y-1]==c){
-    Serial.println("u");
-    Serial.println(nb);
+    //Serial.println("u");
+    //Serial.println(nb);
     int h4=nb;
-    h4=heal(x,y--,c,"u",h4++);
-    if (h4!=0 && dir!="n"){
-      return h4;
-    }else if(h4>3 && dir=="n"){
+    h4=heal(x,y-1,c,"u",h4+1);
+    if(h4>3 && nb==1){
       u=h4;
+      cleanBoard(x,y,"u",u);
+    }
+    else if (h4!=0){
+      return h4;
     }
   }else{
-    return 0;
-  }
-  //suppression
-  if (r>0){
-    cleanBoard(x,y,"r",r);
-  }
-  if (l>0){
-    cleanBoard(x,y,"l",l);
-  }
-  if (d>0){
-    cleanBoard(x,y,"d",d);
-  }
-  if (u>0){
-    cleanBoard(x,y,"u",u);
+    if(nb>3){
+      return nb;
+    }else{
+      return 0;
+    }
   }
 }
 
-void cleanBoard(int x,int y,String dir,int nb){
-  Serial.println("test");
-  Serial.println("nb");
+int cleanBoard(int x,int y,String dir,int nb){
+  Serial.println(dir);
+  Serial.println(nb);
   if(dir=="l"){
     for(int i=0;i<nb;i++){
       game[x-i][y]=black;
@@ -224,47 +222,67 @@ void cleanBoard(int x,int y,String dir,int nb){
   }
   if(dir=="d"){
     for(int i=0;i<nb;i++){
+      //Serial.println(i);
+      Serial.println(x);
+      Serial.println(y+i);
       game[x][y+i]=black;
-      int pileb[]={x*3+3,(y+i)*3,x*3+5,(y+i)*3+2};
+      int pileb[]={x*3+33,(y+i)*3+3,x*3+35,(y+i)*3+5};
       drawPile(pileb,black);
     }
   }
+  return 1; //<-sert pour fun heal
 }
 
 void stepleft(){
+  long int temps=micros();
   drawPile(pile1,black);
   drawPile(pile2,black);
   int x1=pile1[0];
   int x2=pile2[0];
-  if(x1>33 && x2>33){
-    if (micros()-temps>100000){
+  int y1=pile1[1];
+  int y2=pile2[1];
+  if(x1>33 && x2>33 && game[(x1-33)/3-1][(y1-3)/3]==black && game[(x2-33)/3-1][(y2-3)/3]==black && fa){
+    if (temps-temps1>100000){
       pile1[0]=x1-3;
       pile1[2]=x1-1;
       pile2[0]=x2-3;
       pile2[2]=x2-1;
+      //fa=true;
     }
   }
+  //Serial.println("leftttttt");
+  //Serial.println(x1/3-11);
+  fa=hit(pile1,c1,fa);
+  fa=hit(pile2,c2,fa);
+  fa=hit(pile1,c1,fa);
   drawPile(pile1,c1);
   drawPile(pile2,c2);
-  temps=micros();
+  temps1=temps;
 }
 
 void stepright(){ //ajouter collision horizontal
+  long int temps=micros();
   drawPile(pile1,black);
   drawPile(pile2,black);
   int x1=pile1[2];
   int x2=pile2[2];
-  if(x1<62 && x2<62){
-    if (micros()-temps>100000){
+  int y1=pile1[1];
+  int y2=pile2[1];
+  if(x1<62 && x2<62 && game[(x1-33)/3+1][(y1-3)/3]==black && game[(x2-33)/3+1][(y2-3)/3]==black && fa){
+    if (temps-temps1>100000){
       pile1[0]=x1+1;
       pile1[2]=x1+3;
       pile2[0]=x2+1;
       pile2[2]=x2+3;
+      //fa=true;
     }
   }
+  fa=hit(pile1,c1,fa);
+  fa=hit(pile2,c2,fa);
+  fa=hit(pile1,c1,fa);
   drawPile(pile1,c1);
   drawPile(pile2,c2);
-  temps=micros();
+  temps1=temps;
 }
 
 int fall(int py){
@@ -276,8 +294,12 @@ bool hit(int pile[],uint16_t c,bool fa){  //rajouter heal
   int y1=pile[1];
   int x2=pile[2];
   int y2=pile[3];
-  if ((int(y2/3))>19 || game[int((x2-33)/3)][int((y2-3)/3)+1]!=black || fa==false){
-    game[int((x2-33)/3)][int((y2-3)/3)]=c;
+  Serial.println((x2-33)/3);
+  Serial.println("vibe check");
+  Serial.println(game[0][int(y2/3)+1]!=black);
+  Serial.println(game[int((x2-33)/3)][int(y2/3)+1]!=black);
+  if ((int(y2/3)+1)>19 || game[int((x2-33)/3)][int(y2/3)+1]!=black || fa==false){
+    game[int((x2-33)/3)][int((y2)/3)]=c;
     fa=false;
   }
   return fa;
@@ -285,37 +307,51 @@ bool hit(int pile[],uint16_t c,bool fa){  //rajouter heal
 
 void loop()
 {  
+  int x=pile1[0]/3-11;
+  int y=pile1[1]/3-1;
+  Serial.println("start loop");
+  Serial.println(pile1[0]/3-11);
   //int pile1[]={34, 1, 36, 3};
   //int pile2[]={37, 1, 39, 3};
-  drawPile(pile1,c1);
-  drawPile(pile2,c2);
-  delay(500);
+  /*drawPile(pile1,c1);
+  drawPile(pile2,c2);*/
+  //delay(500);
   if(fa){
     drawPile(pile1,black);
     drawPile(pile2,black);
+    Serial.println("f*ck you disco");
+    Serial.println(pile1[0]/3-11);
+    fa=hit(pile1,c1,fa);
+    fa=hit(pile2,c2,fa);
+    fa=hit(pile1,c1,fa);
     pile1[1]=fall(pile1[1]);
     pile1[3]=fall(pile1[3]);
     pile2[1]=fall(pile2[1]);
     pile2[3]=fall(pile2[3]);
-    fa=hit(pile1,c1,fa);
-    fa=hit(pile2,c2,fa);
+    drawPile(pile1,c1);
+    drawPile(pile2,c2);
+    //Serial.println(y);
     //Serial.println(int(pile1[1]/3));
     
   }else{
-    Serial.println(pile1[1]);
-    int x=pile1[0]/3-11;
-    int y=pile1[1]/3-1;
-    heal(x,y,c1,"n",0);
+    heal(x,y,c1,"n",1);
     x=pile2[0]/3-11;
-    y=pile1[1]/3;
-    heal(x,y,c2,"n",0);
+    y=pile1[1]/3-1;
+    heal(x,y,c2,"n",1);
     pile1[1]=3;
     pile1[3]=5;
     pile2[1]=3;
     pile2[3]=5;
+    drawPile(pile1,c1);
+    drawPile(pile2,c2);
     fa=true;
     //delay(10000);
   }
+  Serial.println(pile1[0]/3-11);
+  Serial.println("now delay");
+  delay(500);
+  Serial.println("end loop");
+  Serial.println(pile1[0]/3-11);
   /*byte i;
   if(a<=-64)
 {a=64;
