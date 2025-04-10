@@ -1,6 +1,8 @@
 int sizem = 63;
 int bp1 = 2;
 int bp2 = 3;
+int bp3=18;
+int bp4=19;
 
 #include <DFRobot_RGBMatrix.h> // Hardware-specific library
 #include <Wire.h>
@@ -45,8 +47,10 @@ void setup() {
   Serial.begin(9600);
   pinMode(bp1, INPUT_PULLUP);
   pinMode(bp2, INPUT_PULLUP);
+  pinMode(bp3,INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(bp1), stepleft, FALLING);
   attachInterrupt(digitalPinToInterrupt(bp2), stepright, FALLING);
+  attachInterrupt(digitalPinToInterrupt(bp3), spin, FALLING);
   matrix.begin();
   
   // Initialisation du tableau de jeu
@@ -55,7 +59,7 @@ void setup() {
       game[i][j] = black;
     }
   }
-  game[0][19] = red;
+  //game[0][19] = red;
 
   // Initialisation de l'affichage
   matrix.fillScreen(matrix.Color333(0, 0, 0));
@@ -182,7 +186,7 @@ int drawPile(int pile[], uint16_t c) {
   for (int y = y1; y < y2 + 1; y++) {
     matrix.drawLine(x1, y, x2, y, c);
   }
-  return 1;
+  return 1; //<- plus sure de l'utilité
 }
 
 void stepleft() {
@@ -237,18 +241,60 @@ void stepright() {
   temps1 = temps;
 }
 
+
+void spin(){
+  long int temps=micros();
+  if (temps-temps1>100000){
+    drawPile(pile1,black);
+    drawPile(pile2,black);
+    int x1=pile1[0];
+    int x2=pile2[0];
+    int y1=pile1[1];
+    int y2=pile2[1];
+    if(y1==y2){
+      if(x2>x1){   //penser à ajouter collision
+        pile1[0]=pile2[0];
+        pile1[2]=pile2[2];
+        pile1[1]=pile2[1]-3;
+        pile1[3]=pile2[3]-3;
+      }
+      else{
+        pile2[0]=pile1[0];
+        pile2[2]=pile1[2];
+        pile2[1]=pile1[1]-3;
+        pile2[3]=pile1[3]-3;
+      }
+    }else{
+      if(y2>y1){
+        pile2[0]=pile2[0]-3;
+        pile2[2]=pile2[2]-3;
+        pile1[1]=pile2[1];
+        pile1[3]=pile2[3];
+      }else{
+        pile1[0]=pile1[0]-3;
+        pile1[2]=pile1[2]-3;
+        pile2[1]=pile1[1];
+        pile2[3]=pile1[3];
+      }
+    }
+    drawPile(pile1,c1);
+    drawPile(pile2,c2);
+    temps1=temps;
+  }
+}
+
 int fall(int py) {
   return py + 3;
 }
 
 bool hit(int pile[], uint16_t c, bool fa) {
-  int x1 = pile[0];
-  int y1 = pile[1];
-  int x2 = pile[2];
-  int y2 = pile[3];
+  int x1=pile1[0]/3-11;
+  int y1=pile1[1]/3-1;
+  int x2=pile[2]/3-11;
+  int y2=pile[3]/3-1;
   
-  if ((int(y2 / 3) + 1) > 19 || game[int((x2 - 33) / 3)][int(y2 / 3) + 1] != black || fa == false) {
-    game[int((x2 - 33) / 3)][int((y2) / 3)] = c;
+  if (y2+1>19 || game[x2][y2+1]!=black || fa==false){
+    game[x2][y2]=c;
     score += 10; // Augmentation du score quand un bloc se pose
     updateScoreDisplay();
     fa = false;
@@ -290,7 +336,7 @@ int cleanBoard(int x,int y,String dir,int nb){
       drawPile(pileb,black);
     }
   }
-  return 1; //<-sert pour fun heal
+  return 1; //<-sert pour fun heal (???)
 }
 
 int heal(int x,int y,uint16_t c,String dir,int nb){
@@ -361,24 +407,41 @@ int heal(int x,int y,uint16_t c,String dir,int nb){
   }
 }
 
+void treugame(){  // ajoute l'affichage du modèle
+  for(int i=0;i<20;i++){
+    for (int j=0;j<10;j++){
+      Serial.print("[");
+      if (game[j][i]==black){
+        Serial.print(" ");
+      }else{
+        Serial.print("X");
+      }
+      Serial.print("]");
+    }
+    Serial.println();
+  }
+}
+
 void loop() {
+  int x=pile1[0]/3-11;
+  int y=pile1[1]/3-1;
   if (fa) {
     drawPile(pile1, black);
     drawPile(pile2, black);
-    
-    fa = hit(pile1, c1, fa);
-    fa = hit(pile2, c2, fa);
     
     pile1[1] = fall(pile1[1]);
     pile1[3] = fall(pile1[3]);
     pile2[1] = fall(pile2[1]);
     pile2[3] = fall(pile2[3]);
-    
+
     drawPile(pile1, c1);
     drawPile(pile2, c2);
+    
+    fa = hit(pile1, c1, fa);
+    fa = hit(pile2, c2, fa);
+    fa = hit(pile1, c1, fa); //<- nécéssaire pour heal()
+    
   } else {
-    int x = pile1[0] / 3 - 11;
-    int y = pile1[1] / 3 - 1;
     heal(x, y, c1, "n", 1);
     
     x = pile2[0] / 3 - 11;
@@ -399,7 +462,7 @@ void loop() {
   }
   
   updateScoreDisplay();
-  delay(500 - (level * 50)); // Le jeu s'accélère avec le niveau
+  delay(1000 - (level * 50)); // Le jeu s'accélère avec le niveau
 }
 
 // Les fonctions heal(), cleanBoard() et comboEffect() restent identiques à votre version originale
