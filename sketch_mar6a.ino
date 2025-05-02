@@ -3,6 +3,7 @@ int bp1 = 2;
 int bp2 = 3;
 int bp3=18;
 int bp4=19;
+int muco;
 
 #include <DFRobot_RGBMatrix.h> // Hardware-specific library
 #include <Wire.h>
@@ -20,6 +21,7 @@ int bp4=19;
 int a = 0;
 int b = 16;
 int score = 0;
+int play=1;
 int lastScore = -1; // Pour détecter les changements de score
 int level = 1;
 DFRobot_RGBMatrix matrix(A, B, C, D, E, CLK, LAT, OE, false, WIDTH, HIGH);
@@ -44,7 +46,9 @@ uint16_t c2 = blue;
 bool fa = true;
 
 void setup() {
+  randomSeed(analogRead(0));
   Serial.begin(9600);
+  Serial2.begin(9600);
   pinMode(bp1, INPUT_PULLUP);
   pinMode(bp2, INPUT_PULLUP);
   pinMode(bp3,INPUT_PULLUP);
@@ -59,8 +63,6 @@ void setup() {
       game[i][j] = black;
     }
   }
-  //game[0][19] = red;
-
   // Initialisation de l'affichage
   matrix.fillScreen(matrix.Color333(0, 0, 0));
   drawBorders();
@@ -69,10 +71,28 @@ void setup() {
   displayLevel();
   
   matrix.setTextColor(matrix.Color333(4, 0, 4));
-  drawVirus();
+  
   delay(500);
+  game[1][19] = red;
+  drawVirus(1,19);
+  game[2][19] = red;
+  drawVirus(2,19);
+  game[3][19] = red;
+  drawVirus(3,19);
 
-  generateViruses(30);
+  game[4][14] = red;
+  drawVirus(4,14);
+  game[4][15] = red;
+  drawVirus(4,15);
+  game[4][16] = red;
+  drawVirus(4,16);
+
+  //generateViruses(10); //30
+}
+
+void envoi(int n) {
+  Serial.println(n);
+  //Serial2.print(n);
 }
 
 void drawBorders() {
@@ -106,7 +126,7 @@ void displayLevel() {
   matrix.setTextSize(1);
   matrix.setCursor(1, 20);
   matrix.setTextColor(white);
-  matrix.println("Level:");
+  matrix.println("Level");
   matrix.setCursor(1, 28);
   matrix.setTextColor(yellow);
   matrix.println(level);
@@ -139,6 +159,10 @@ void updateScoreDisplay() {
   }
 }
 
+void losescreen(){
+  matrix.drawLine(0,0,63,63, red);
+  matrix.drawLine(0, 63, 63, 0, red);
+}
 uint16_t randomColor() {
   switch (random(3)) {
     case 0: return red;
@@ -159,26 +183,19 @@ void generateViruses(int n) {
       game[x][y] = randomColor(); // Assigner une couleur aléatoire
       
       // Dessiner le virus sur la matrice
-      matrix.drawLine(x * 3 + 33, y * 3 + 3, x * 3 + 35, y * 3 + 5, game[x][y]);
-      matrix.drawLine(x * 3 + 33, y * 3 + 5, x * 3 + 35, y * 3 + 3, game[x][y]);
+      drawVirus(x,y);
       
       virusesGenerated++;
     }
   }
 }
 
-void drawVirus() {
-  for (int i = 0; i < 10; i++) {
-    for (int j = 0; j < 20; j++) {
-      if (game[i][j] != black) {
-        matrix.drawLine(i * 3 + 33, j * 3 + 3, i * 3 + 35, j * 3 + 5, game[i][j]);
-        matrix.drawLine(i * 3 + 33, j * 3 + 5, i * 3 + 35, j * 3 + 3, game[i][j]);
-      }
-    }
-  }
+void drawVirus(int x, int y) {
+  matrix.drawLine(x * 3 + 33, y * 3 + 3, x * 3 + 35, y * 3 + 5, game[x][y]);
+  matrix.drawLine(x * 3 + 33, y * 3 + 5, x * 3 + 35, y * 3 + 3, game[x][y]);
 }
 
-int drawPile(int pile[], uint16_t c) {
+void drawPile(int pile[], uint16_t c) {
   int x1 = pile[0];
   int y1 = pile[1];
   int x2 = pile[2];
@@ -186,7 +203,6 @@ int drawPile(int pile[], uint16_t c) {
   for (int y = y1; y < y2 + 1; y++) {
     matrix.drawLine(x1, y, x2, y, c);
   }
-  return 1; //<- plus sure de l'utilité
 }
 
 void stepleft() {
@@ -210,6 +226,7 @@ void stepleft() {
   
   fa = hit(pile1, c1, fa);
   fa = hit(pile2, c2, fa);
+  fa = hit(pile1, c1, fa);
   drawPile(pile1, c1);
   drawPile(pile2, c2);
   temps1 = temps;
@@ -236,6 +253,7 @@ void stepright() {
   
   fa = hit(pile1, c1, fa);
   fa = hit(pile2, c2, fa);
+  fa = hit(pile1, c1, fa);
   drawPile(pile1, c1);
   drawPile(pile2, c2);
   temps1 = temps;
@@ -247,36 +265,39 @@ void spin(){
   if (temps-temps1>100000){
     drawPile(pile1,black);
     drawPile(pile2,black);
-    int x1=pile1[0];
-    int x2=pile2[0];
-    int y1=pile1[1];
-    int y2=pile2[1];
-    if(y1==y2){
-      if(x2>x1){   //penser à ajouter collision
+    int x1=pile1[0]/3-11;
+    int x2=pile2[0]/3-11;
+    int y1=pile1[1]/3-1;
+    int y2=pile2[1]/3-1;
+    if(y1==y2 && y1>0){
+      if(x2>x1 && game[x2][y1-1]==black){   //penser à ajouter fit
         pile1[0]=pile2[0];
         pile1[2]=pile2[2];
         pile1[1]=pile2[1]-3;
         pile1[3]=pile2[3]-3;
       }
-      else{
+      else if(game[x1][y1-1]==black){
         pile2[0]=pile1[0];
         pile2[2]=pile1[2];
         pile2[1]=pile1[1]-3;
         pile2[3]=pile1[3]-3;
       }
-    }else{
-      if(y2>y1){
+    }else if (x1>0){
+      if(y2>y1 && game[x1-1][y2]==black){
         pile2[0]=pile2[0]-3;
         pile2[2]=pile2[2]-3;
         pile1[1]=pile2[1];
         pile1[3]=pile2[3];
-      }else{
+      }else if (game[x1-1][y1]==black){
         pile1[0]=pile1[0]-3;
         pile1[2]=pile1[2]-3;
         pile2[1]=pile1[1];
         pile2[3]=pile1[3];
       }
     }
+    fa = hit(pile1, c1, fa);
+    fa = hit(pile2, c2, fa);
+    fa = hit(pile1, c1, fa);
     drawPile(pile1,c1);
     drawPile(pile2,c2);
     temps1=temps;
@@ -302,41 +323,22 @@ bool hit(int pile[], uint16_t c, bool fa) {
   return fa;
 }
 
-int cleanBoard(int x,int y,String dir,int nb){
-  Serial.println(dir);
-  Serial.println(nb);
-  if(dir=="l"){
-    for(int i=0;i<nb;i++){
-      game[x-i][y]=black;
-      int pileb[]={(x+1-i)*3,y*3,(x+1-i)*3,y*3+2};
-      drawPile(pileb,black);
-    }
-  }
+void cleanBoard(int x,int y,String dir,int nb){
   if(dir=="r"){
     for(int i=0;i<nb;i++){
       game[x+i][y]=black;
-      int pileb[]={(x+1+i),y*3,(x+1+i)*3+2,y*3+2};
+      int pileb[]={(x+i)*3+33,y*3+3,(x+i)*3+35,y*3+5};
       drawPile(pileb,black);
     }
   }
-  if(dir=="u"){
+  else{
     for(int i=0;i<nb;i++){
-      game[x][y-i]=black;
-      int pileb[]={x*3+3,(y-i)*3,x*3+5,(y-i)*3+2};
-      drawPile(pileb,black);
-    }
-  }
-  if(dir=="d"){
-    for(int i=0;i<nb;i++){
-      //Serial.println(i);
-      Serial.println(x);
-      Serial.println(y+i);
       game[x][y+i]=black;
       int pileb[]={x*3+33,(y+i)*3+3,x*3+35,(y+i)*3+5};
       drawPile(pileb,black);
     }
   }
-  return 1; //<-sert pour fun heal (???)
+  //envoi(nb-3);
 }
 
 int heal(int x,int y,uint16_t c,String dir,int nb){
@@ -344,35 +346,15 @@ int heal(int x,int y,uint16_t c,String dir,int nb){
   int l=0;
   int d=0;
   int u=0;
-  //Serial.println(x);
-  //Serial.println(y);
-  //Serial.println(dir);
-  //Serial.println(game[x][y+1]==c);
-  //Serial.println(game[x][y+1]==black);
   if ((dir=="n"|| dir=="r") && game[x+1][y]==c){
-    //Serial.println("r");
-    //Serial.println(nb);
     int h1=nb;
-    h1=heal(x+1,y,c,"r",h1+1); //variable prend en compte pour cross
+    h1=heal(x+1,y,c,"r",h1+1);
     if(h1>3 && nb==1){
       r=h1;
       cleanBoard(x,y,"r",r);
     }
     else if (h1!=0){
       return h1;
-    }
-  }
-  if ((dir=="n"|| dir=="l") && game[x-1][y]==c){
-    //Serial.println("l");
-    //Serial.println(nb);
-    int h2=nb;
-    h2=heal(x-1,y,c,"l",h2+1);
-    if(h2>3 && nb==1){
-      l=h2;
-      cleanBoard(x,y,"l",l);
-    }
-    else if (h2!=0){
-      return h2;
     }
   }
   if ((dir=="n"|| dir=="d") && game[x][y+1]==c){
@@ -385,19 +367,6 @@ int heal(int x,int y,uint16_t c,String dir,int nb){
     else if (h3!=0){
       return h3;
     }
-  }
-  if ((dir=="n"|| dir=="u") && game[x][y-1]==c){
-    //Serial.println("u");
-    //Serial.println(nb);
-    int h4=nb;
-    h4=heal(x,y-1,c,"u",h4+1);
-    if(h4>3 && nb==1){
-      u=h4;
-      cleanBoard(x,y,"u",u);
-    }
-    else if (h4!=0){
-      return h4;
-    }
   }else{
     if(nb>3){
       return nb;
@@ -405,6 +374,21 @@ int heal(int x,int y,uint16_t c,String dir,int nb){
       return 0;
     }
   }
+}
+
+int checkborderx(int x,int y,uint16_t c){
+  int nux=0;
+  while (game[x-nux-1][y]==c){
+    nux++;
+  }
+  return nux;
+}
+int checkbordery(int x,int y,uint16_t c){
+  int nuy=0;
+  while (game[x][y-nuy-1]==c){
+    nuy++;
+  }
+  return nuy;
 }
 
 void treugame(){  // ajoute l'affichage du modèle
@@ -423,6 +407,11 @@ void treugame(){  // ajoute l'affichage du modèle
 }
 
 void loop() {
+  if (Serial2.available() > 0) {
+    muco = Serial2.read();
+    Serial.println(muco);
+    //generateViruses(muco);
+  }
   int x=pile1[0]/3-11;
   int y=pile1[1]/3-1;
   if (fa) {
@@ -441,12 +430,19 @@ void loop() {
     fa = hit(pile2, c2, fa);
     fa = hit(pile1, c1, fa); //<- nécéssaire pour heal()
     
-  } else {
-    heal(x, y, c1, "n", 1);
+  } else if (play==1) {
+    int nux=x-checkborderx(x,y,c1);
+    int nuy=y-checkbordery(x,y,c1);
+    heal(nux, y, c1, "n", 1);
+    heal(x, nuy, c1, "n", 1);
     
     x = pile2[0] / 3 - 11;
     y = pile2[1] / 3 - 1;
-    heal(x, y, c2, "n", 1);
+    nux=x-checkborderx(x,y,c2);
+    nuy=y-checkbordery(x,y,c2);
+    heal(nux, y, c2, "n", 1);
+    heal(x, nuy, c2, "n", 1);
+
     
     // Réinitialiser les piles pour la chute suivante
     pile1[0] = 33; pile1[1] = 3; pile1[2] = 35; pile1[3] = 5;
@@ -458,7 +454,12 @@ void loop() {
     
     drawPile(pile1, c1);
     drawPile(pile2, c2);
-    fa = true;
+    if(game[0][1]!=black || game[1][1]!=black){
+      losescreen();
+      play=0;
+    }else{
+      fa = true;
+    }
   }
   
   updateScoreDisplay();
@@ -466,4 +467,4 @@ void loop() {
 }
 
 // Les fonctions heal(), cleanBoard() et comboEffect() restent identiques à votre version originale
-// Elles ont été conservées mais non modifiées pour garder la logique du jeu
+// Elles ont été conservées mais no non modifiées pour garder la logique du jeu
