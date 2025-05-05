@@ -28,6 +28,7 @@ int lastScore = -1; // Pour détecter les changements de score
 int level = 1;
 DFRobot_RGBMatrix matrix(A, B, C, D, E, CLK, LAT, OE, false, WIDTH, HIGH);
 bool start = false; // bool pour le menu pour commencer le jeu
+bool restart = false;
 //MeBuzzer buzzer;
 
 // Définition des couleurs
@@ -37,6 +38,9 @@ uint16_t green = matrix.Color333(0, 7, 0);
 uint16_t yellow = matrix.Color333(7, 7, 0);
 uint16_t white = matrix.Color333(7, 7, 7);
 uint16_t black = matrix.Color333(0, 0, 0);
+uint16_t marron = matrix.Color333(3, 1, 0);
+uint16_t gris = matrix.Color333(4, 4, 4);
+uint16_t peau = matrix.Color333(7, 5, 4);
 uint16_t bgColor = matrix.Color333(1, 1, 1);    // Gris pour le fond
 
 volatile long int temps1 = 0;
@@ -57,9 +61,9 @@ void setup() {
   pinMode(bp2, INPUT_PULLUP);
   pinMode(bp3,INPUT_PULLUP);
   pinMode(bp4,INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(bp1), stepleft, FALLING);
-  attachInterrupt(digitalPinToInterrupt(bp2), stepright, FALLING);
-  attachInterrupt(digitalPinToInterrupt(bp3), spin, FALLING);
+  attachInterrupt(digitalPinToInterrupt(bp1), commencer, FALLING);
+  attachInterrupt(digitalPinToInterrupt(bp2), commencer, FALLING);
+  attachInterrupt(digitalPinToInterrupt(bp3), commencer, FALLING);
   attachInterrupt(digitalPinToInterrupt(bp4), commencer, FALLING);
   matrix.begin();
   
@@ -75,6 +79,12 @@ void setup() {
 
 void envoi(int n) {
   Serial2.print(n);
+}
+
+void reccomencer() {
+  start=false;
+  restart=true;
+  matrix.fillScreen(0);
 }
 
 void drawBorders() {
@@ -115,16 +125,17 @@ void displayScore() {
 void displayLevel() {
   matrix.fillRect(1, 20, 30, 12, bgColor);
   matrix.setTextSize(1);
-  matrix.setCursor(2, 27);
+  matrix.setCursor(2, 20);
   matrix.setTextColor(white);
   matrix.println("Level");
-  matrix.setCursor(1, 28);
+  matrix.setCursor(1, 30);
   matrix.setTextColor(yellow);
   matrix.println(level);
 }
 
 void updateScoreDisplay() {
   if (score != lastScore) {
+    /*
     // Effet d'animation pour les nouveaux points
     matrix.fillRect(1, 10, 30, 8, bgColor);
     matrix.setTextSize(1);
@@ -132,6 +143,7 @@ void updateScoreDisplay() {
     matrix.setTextColor(green);
     matrix.println(score);
     //delay(50);
+    */
     
     // Retour à l'affichage normal
     matrix.fillRect(1, 10, 30, 8, bgColor);
@@ -151,9 +163,20 @@ void updateScoreDisplay() {
 }
 
 void losescreen(){
-  matrix.drawLine(0,0,63,63, red);
-  matrix.drawLine(0, 63, 63, 0, red);
+  matrix.fillScreen(0);
+  matrix.setTextSize(1);
+  matrix.setCursor(3,10);
+  matrix.setTextColor(red);
+  matrix.println("Game Over!");
+  matrix.setCursor(10,30);
+  matrix.setTextColor(yellow);
+  matrix.println("Restart?");
+  attachInterrupt(digitalPinToInterrupt(bp1), reccomencer, FALLING);
+  attachInterrupt(digitalPinToInterrupt(bp2), reccomencer, FALLING);
+  attachInterrupt(digitalPinToInterrupt(bp3), reccomencer, FALLING);
+  attachInterrupt(digitalPinToInterrupt(bp4), reccomencer, FALLING);
 }
+
 uint16_t randomColor() {
   switch (random(3)) {
     case 0: return red;
@@ -470,9 +493,33 @@ void loop() {
 
     // Start button
     matrix.setTextSize(1);
-    matrix.setCursor(17,40);
+    matrix.setCursor(17,25);
     matrix.setTextColor(white);
     matrix.println("Start");
+
+    matrix.fillRect(16,40,15,10,blue);
+    matrix.fillRect(31,40,15,10,red);
+    matrix.drawLine(20,42,43,42,white);
+    matrix.drawLine(20,41,43,41,white);
+    matrix.drawLine(18,42,20,42,white);
+    matrix.drawLine(18,43,20,43,white);
+
+    if (restart) {
+      for (int i = 0; i < 10; i++) {
+        for (int j = 0; j < 20; j++) {
+          game[i][j] = black;
+        }
+      }
+      restart=false;
+      play=1;
+      score=0;
+      level=1;
+    attachInterrupt(digitalPinToInterrupt(bp1), commencer, FALLING);
+    attachInterrupt(digitalPinToInterrupt(bp2), commencer, FALLING);
+    attachInterrupt(digitalPinToInterrupt(bp3), commencer, FALLING);
+    attachInterrupt(digitalPinToInterrupt(bp4), commencer, FALLING);
+    }
+
     if (start) {
        pile1[0] = 33; pile1[1] = 3; pile1[2] = 35; pile1[3] = 5;
       pile2[0] = 36; pile2[1] = 3; pile2[2] = 38; pile2[3] = 5;
@@ -480,6 +527,9 @@ void loop() {
       c2 = randomColor();
       drawPile(pile1, c1);
       drawPile(pile2, c2);
+      attachInterrupt(digitalPinToInterrupt(bp1), stepleft, FALLING);
+      attachInterrupt(digitalPinToInterrupt(bp2), stepright, FALLING);
+      attachInterrupt(digitalPinToInterrupt(bp3), spin, FALLING);
       attachInterrupt(digitalPinToInterrupt(bp4), tofall, FALLING);
       //buzzer.tone(500,10);
       // Initialisation de l'affichage
